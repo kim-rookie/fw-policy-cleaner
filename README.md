@@ -17,7 +17,16 @@
 - **빠름** — 목적지 대역 인덱스로 비교 후보를 줄여 정책 1만 개를 약 1초에 분석합니다.
 - **로컬 전용** — `127.0.0.1` 에만 바인딩하고, 업로드한 파일은 메모리에서만 처리합니다. 설정 파일이 외부로 나가지 않습니다.
 
-## 빠른 시작
+## 다운로드 (Windows)
+
+**[Releases](../../releases/latest)** 에서 `fw-policy-cleaner-<버전>-windows-x64.exe` 를 받아 실행하면 브라우저가 열립니다.
+Python 설치가 필요 없습니다.
+
+- 처음 실행 시 Windows SmartScreen 경고가 뜨면 **추가 정보 → 실행** 을 누르세요 (코드 서명 인증서가 없는 개인 프로젝트입니다).
+- exe 는 GitHub Actions 에서 이 저장소의 소스로 빌드되며, 함께 올린 `.sha256` 파일로 무결성을 확인할 수 있습니다.
+- 체험용 가상 설정 파일은 [`samples/`](samples/) 폴더에 있습니다.
+
+## 소스에서 실행
 
 Python 3.10 이상이 필요합니다.
 
@@ -106,7 +115,11 @@ samples/         가상 설정 파일 (tools/make_samples.py 로 재생성)
 pip install -r requirements.txt
 python -m pytest -q
 python tools/make_samples.py     # 표 형식 샘플 재생성
+python tools/build_exe.py        # Windows exe 빌드 (pip install pyinstaller 필요)
 ```
+
+릴리스: `fwclean/__init__.py` 의 버전을 올리고 같은 이름의 태그(`v1.0.1` 등)를 push 하면
+GitHub Actions 가 테스트 → exe 빌드 → exe 실행 점검 → Release 업로드를 자동으로 수행합니다.
 
 ## 보안 주의
 

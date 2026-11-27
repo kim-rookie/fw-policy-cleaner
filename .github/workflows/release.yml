@@ -1,0 +1,74 @@
+name: release
+
+# v1.2.3 형식의 태그를 push 하면 Windows exe 를 빌드해 GitHub Release 에 올린다.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  windows-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip install pyinstaller
+
+      - name: Test
+        run: python -m pytest -q
+
+      - name: Check tag matches package version
+        shell: pwsh
+        run: |
+          $v = python -c "import fwclean; print(fwclean.__version__)"
+          if ("v$v" -ne "${{ github.ref_name }}") { throw "tag ${{ github.ref_name }} != package version v$v" }
+
+      - name: Build exe
+        run: python tools/build_exe.py
+
+      - name: Smoke test exe
+        shell: pwsh
+        run: |
+          $p = Start-Process dist\fw-policy-cleaner.exe -ArgumentList "--no-browser","--port","8799" -PassThru
+          $ok = $false
+          for ($i = 0; $i -lt 30 -and -not $ok; $i++) {
+            Start-Sleep 1
+            try { $ok = (Invoke-WebRequest http://127.0.0.1:8799/ -UseBasicParsing).StatusCode -eq 200 } catch {}
+          }
+          $r = curl.exe -s -F "file=@samples/fortigate.conf" -F vendor=auto http://127.0.0.1:8799/api/analyze | ConvertFrom-Json
+          Stop-Process $p.Id -Force
+          if (-not $ok -or $r.summary.vendor -ne "fortigate") { throw "exe smoke test failed" }
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $name = "fw-policy-cleaner-${{ github.ref_name }}-windows-x64"
+          Copy-Item dist\fw-policy-cleaner.exe "$name.exe"
+          (Get-FileHash "$name.exe" -Algorithm SHA256).Hash.ToLower() + "  $name.exe" | Out-File -Encoding ascii "$name.exe.sha256"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $name = "fw-policy-cleaner-${{ github.ref_name }}-windows-x64"
+          $notes = @"
+          ## 다운로드
+          **$name.exe** 를 받아 실행하면 브라우저가 열립니다. Python 설치가 필요 없습니다.
+
+          - 처음 실행하면 Windows SmartScreen 이 "알 수 없는 게시자" 경고를 띄울 수 있습니다 (코드 서명 인증서가 없는 개인 프로젝트).
+            **추가 정보 → 실행** 을 누르면 됩니다. 이 파일은 GitHub Actions 에서 공개된 소스로 빌드되었습니다.
+          - 무결성 확인: ``certutil -hashfile $name.exe SHA256`` 결과를 함께 올린 .sha256 파일과 비교하세요.
+          - 업로드한 파일은 PC 안에서만 처리되며 외부로 전송되지 않습니다 (127.0.0.1 전용).
+
+          체험용 가상 설정 파일은 저장소의 ``samples/`` 폴더에 있습니다.
+          "@
+          gh release create "${{ github.ref_name }}" "$name.exe" "$name.exe.sha256" --title "${{ github.ref_name }}" --notes $notes
