@@ -24,6 +24,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font-size: 14px; lin
 .brand { display: flex; gap: 8px; align-items: center; font-weight: 700; font-size: 16px; color: var(--accent); }
 .brand span { color: var(--ink); }
 .ver { color: var(--muted); font-size: 12px; }
+.ver a { color: var(--accent); text-decoration: none; }
 main { max-width: 1440px; margin: 0 auto; padding: 20px 24px 60px; display: grid; gap: 16px; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; }
 h2 { font-size: 16px; margin: 0 0 12px; }
@@ -39,6 +40,12 @@ h3 { margin: 0; font-size: 15px; }
 .drop:hover, .drop.over { border-color: var(--accent); background: var(--info-bg); }
 .drop-inner { display: grid; gap: 6px; }
 .drop.has-file strong { color: var(--accent); }
+.drop-col { display: grid; gap: 10px; align-content: start; }
+.sample-row { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; }
+.sample-row select { flex: 1; }
+.privacy-note { margin: 0; font-size: 12px; color: var(--keep); background: var(--keep-bg); border-radius: 8px; padding: 8px 10px; }
+.engine-status { margin: 0; font-size: 12px; color: var(--muted); }
+.engine-status.error { color: var(--remove); }
 .opts { display: grid; gap: 10px; align-content: start; }
 .field { display: grid; gap: 4px; font-weight: 600; }
 select, input[type=search] { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px;

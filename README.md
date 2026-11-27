@@ -4,6 +4,11 @@
 
 > A local web tool that analyzes exported firewall rulebases (Palo Alto, FortiGate, Cisco ASA, Juniper SRX/ScreenOS, Check Point, Korean vendors) and finds redundant, shadowed and over-permissive rules — only flagging a rule for removal when doing so provably does not change first-match behavior.
 
+### 👉 [바로 써보기 — kim-rookie.github.io/fw-policy-cleaner](https://kim-rookie.github.io/fw-policy-cleaner/)
+
+설치 없이 브라우저에서 바로 실행됩니다. 분석은 **브라우저 안에서만** 이뤄지고 파일은 어디에도 업로드되지 않습니다
+(페이지의 Content-Security-Policy 가 외부 전송을 차단). 파일이 없으면 화면의 샘플로 체험할 수 있습니다.
+
 ![결과 화면](docs/result.png)
 
 ## 특징
@@ -104,7 +109,7 @@ fwclean/
   parsers/       벤더별 파서 (paloalto, fortigate, cisco_asa, juniper_srx, screenos, tabular)
   analyzer.py    판정 엔진 (first-match 기반, 목적지 대역 인덱스)
   report.py      JSON / 엑셀 리포트 / 정리본 / 장비 명령어
-  web/           Flask 로컬 웹 UI
+  web/           웹 UI — bridge.py(공통) + Flask 서버(app.py) / 브라우저 워커(static/worker.js, Pyodide)
 tests/           파서·판정 회귀 테스트, 정리 전후 동작 동일성 검증
 samples/         가상 설정 파일 (tools/make_samples.py 로 재생성)
 ```
@@ -116,6 +121,7 @@ pip install -r requirements.txt
 python -m pytest -q
 python tools/make_samples.py     # 표 형식 샘플 재생성
 python tools/build_exe.py        # Windows exe 빌드 (pip install pyinstaller 필요)
+python tools/build_site.py       # 웹사이트 빌드 → site/ (python -m http.server 로 미리보기)
 ```
 
 릴리스: `fwclean/__init__.py` 의 버전을 올리고 같은 이름의 태그(`v1.0.1` 등)를 push 하면

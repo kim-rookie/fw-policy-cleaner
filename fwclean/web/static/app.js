@@ -6,8 +6,98 @@ const PAGE = 100;
 const state = { file: null, vendors: [], preview: null, mappingDirty: false, data: null,
                 filter: { chip: "all", scope: "", q: "" }, page: 0, byUid: new Map() };
 
+// ------------------------------------------------------------------ 백엔드
+// 서버 모드: 로컬 Flask API 호출 / 정적 모드(GitHub Pages): 브라우저 안의 Pyodide 워커가 처리.
+const STATIC = !!window.FWCLEAN_STATIC;
+
+function serverBackend() {
+  const form = (file, fields) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    for (const [k, v] of Object.entries(fields)) fd.append(k, typeof v === "string" ? v : JSON.stringify(v));
+    return fd;
+  };
+  const call = async (url, fd) => {
+    const r = await fetch(url, { method: "POST", body: fd });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || "요청 실패");
+    return j;
+  };
+  return {
+    ready: Promise.resolve(),
+    vendors: () => fetch("/api/vendors").then((r) => r.json()),
+    preview: (file, vendor) => call("/api/preview", form(file, { vendor })),
+    analyze: (file, vendor, options, parse_options) =>
+      call("/api/analyze", form(file, { vendor, options, parse_options })),
+    download: async (id, kind) => { window.location.href = `/api/result/${id}/${kind}`; },
+  };
+}
+
+function workerBackend() {
+  // blob: URL 로 만든 워커는 페이지의 CSP 를 물려받는다 → 워커 안에서도 외부 전송이 차단된다.
+  const worker = new Worker(URL.createObjectURL(new Blob([window.FWCLEAN_WORKER_SRC], { type: "text/javascript" })));
+  worker.postMessage({ type: "init", base: new URL(".", location.href).href, pyodide: window.FWCLEAN_PYODIDE });
+  const pending = new Map();
+  let seq = 0;
+  let readyResolve, readyReject;
+  const ready = new Promise((res, rej) => { readyResolve = res; readyReject = rej; });
+  worker.onmessage = ({ data: m }) => {
+    if (m.type === "status") return engineStatus(m.text);
+    if (m.type === "ready") { engineStatus(""); return readyResolve(); }
+    if (m.type === "fatal") { engineStatus("분석 엔진을 불러오지 못했습니다: " + m.error, true); return readyReject(new Error(m.error)); }
+    const p = pending.get(m.id);
+    if (!p) return;
+    pending.delete(m.id);
+    if (m.error) p.reject(new Error(m.error)); else p.resolve(m.result);
+  };
+  const ask = (msg, transfer = []) => new Promise((resolve, reject) => {
+    const id = ++seq;
+    pending.set(id, { resolve, reject });
+    worker.postMessage({ ...msg, id }, transfer);
+  });
+  const withFile = async (fn, file, payload) => {
+    await ready;
+    const buf = await file.arrayBuffer();
+    const out = JSON.parse(await ask({ type: "call", fn, payload: JSON.stringify({ name: file.name, ...payload }), data: buf }, [buf]));
+    if (out.error) throw new Error(out.error);
+    return out;
+  };
+  return {
+    ready,
+    vendors: async () => { await ready; return JSON.parse(await ask({ type: "call", fn: "vendors", payload: "{}" })); },
+    preview: (file, vendor) => withFile("preview", file, { vendor }),
+    analyze: (file, vendor, options, parse_options) => withFile("analyze", file, { vendor, options, parse_options }),
+    download: async (id, kind) => {
+      const { bytes, filename, mime } = await ask({ type: "download", rid: id, kind });
+      const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
+      const a = Object.assign(document.createElement("a"), { href: url, download: filename });
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    },
+  };
+}
+
+function engineStatus(text, isError = false) {
+  const el = $("#engine-status");
+  if (!el) return;
+  el.hidden = !text;
+  el.textContent = text;
+  el.classList.toggle("error", isError);
+  updateRunButton();
+}
+
+function updateRunButton() {
+  const el = $("#engine-status");
+  const busy = el && !el.hidden;
+  $("#run").disabled = !state.file || busy;
+}
+
+const backend = STATIC ? workerBackend() : serverBackend();
+
 // ------------------------------------------------------------------ 초기화
-fetch("/api/vendors").then((r) => r.json()).then((j) => {
+backend.vendors().then((j) => {
   state.vendors = j.vendors;
   $("#ver").textContent = "v" + j.version;
   const sel = $("#vendor");
@@ -35,7 +125,7 @@ function setFile(f) {
   state.mappingDirty = false;
   $("#file-name").textContent = f.name + "  (" + Math.ceil(f.size / 1024).toLocaleString() + " KB)";
   drop.classList.add("has-file");
-  $("#run").disabled = false;
+  updateRunButton();
   showError("");
   loadPreview();
 }
@@ -53,13 +143,9 @@ async function loadPreview() {
   $("#mapping-box").hidden = true;
   state.preview = null;
   state.sheet = null;
-  const fd = new FormData();
-  fd.append("file", state.file);
-  fd.append("vendor", $("#vendor").value);
   try {
-    const r = await fetch("/api/preview", { method: "POST", body: fd });
-    const j = await r.json();
-    if (my !== previewSeq || !r.ok || j.kind !== "table") return;
+    const j = await backend.preview(state.file, $("#vendor").value);
+    if (my !== previewSeq || j.kind !== "table") return;
     state.preview = j;
     const sheet = j.sheets.find((s) => s.mapping.src && s.mapping.dst) || j.sheets[0];
     renderMapping(sheet);
@@ -101,21 +187,15 @@ $("#run").addEventListener("click", async () => {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>분석 중…';
   showError("");
-  const fd = new FormData();
-  fd.append("file", state.file);
-  fd.append("vendor", $("#vendor").value);
-  fd.append("options", JSON.stringify({
+  const options = {
     include_disabled: $("#opt-disabled").checked, include_unused: $("#opt-unused").checked,
-    detect_down: $("#opt-down").checked, detect_merge: $("#opt-merge").checked }));
+    detect_down: $("#opt-down").checked, detect_merge: $("#opt-merge").checked };
   const popts = { infer_ip_from_name: $("#opt-nameip").checked, zero_as_24: $("#opt-zero24").checked };
   if (state.mappingDirty && state.sheet) {
     Object.assign(popts, { mapping: currentMapping(), header_row: state.sheet.header_row, sheet: state.sheet.sheet });
   }
-  fd.append("parse_options", JSON.stringify(popts));
   try {
-    const r = await fetch("/api/analyze", { method: "POST", body: fd });
-    const j = await r.json();
-    if (!r.ok) throw new Error(j.error || "분석 실패");
+    const j = await backend.analyze(state.file, $("#vendor").value, options, popts);
     state.data = j;
     state.byUid = new Map(j.rules.map((x) => [x.uid, x]));
     state.filter = { chip: "all", scope: "", q: "" };
@@ -126,8 +206,8 @@ $("#run").addEventListener("click", async () => {
     showError(e.message);
     if (state.preview) $("#mapping-box").open = true;
   } finally {
-    btn.disabled = false;
     btn.textContent = "분석";
+    updateRunButton();
   }
 });
 
@@ -136,11 +216,8 @@ function renderResult() {
   $("#result").hidden = false;
   const took = s.elapsed < 0.1 ? "0.1초 미만" : `${s.elapsed.toFixed(1)}초`;
   $("#result-meta").textContent = `${state.data.vendor_label} · ${s.source} · 정책 그룹 ${s.scopes}개 · 분석 ${took}`;
-  $("#dl-report").href = `/api/result/${id}/report.xlsx`;
-  $("#dl-commands").href = `/api/result/${id}/commands.txt`;
   $("#dl-commands").textContent = s.commands_supported ? "정리 명령어 (CLI)" : "정리 대상 목록";
   $("#dl-cleaned").hidden = !state.data.has_cleaned;
-  $("#dl-cleaned").href = `/api/result/${id}/cleaned.xlsx`;
 
   const st = s.by_status;
   const pct = s.total ? Math.round((s.removed / s.total) * 100) : 0;
@@ -305,3 +382,29 @@ $("#d-body").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-goto]");
   if (b) openDrawer(+b.dataset.goto);
 });
+
+// ------------------------------------------------------------------ 다운로드
+document.querySelectorAll("[data-download]").forEach((a) => a.addEventListener("click", async (e) => {
+  e.preventDefault();
+  if (!state.data) return;
+  try { await backend.download(state.data.id, a.dataset.download); }
+  catch (err) { alert(err.message); }
+}));
+
+// ------------------------------------------------------------------ 샘플로 체험 (정적 모드)
+if (STATIC) $("#privacy-note").hidden = false;
+if (STATIC && Array.isArray(window.FWCLEAN_SAMPLES)) {
+  const row = $("#sample-row");
+  const pick = $("#sample-pick");
+  row.hidden = false;
+  pick.innerHTML = '<option value="">샘플 파일 선택…</option>' +
+    window.FWCLEAN_SAMPLES.map(([file, label]) => `<option value="${esc(file)}">${esc(label)}</option>`).join("");
+  pick.addEventListener("change", async () => {
+    if (!pick.value) return;
+    const r = await fetch("samples/" + encodeURIComponent(pick.value));
+    const blob = await r.blob();
+    $("#vendor").value = "auto";
+    updateHint();
+    setFile(new File([blob], pick.value));
+  });
+}
