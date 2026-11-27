@@ -1,0 +1,27 @@
+set zone "Trust" vrouter "trust-vr"
+set address "Trust" "OFFICE" 192.168.0.0 255.255.0.0
+set address "Trust" "TEAM1" 192.168.10.0 255.255.255.0
+set address "DMZ" "WEB-NET" 10.10.1.0 255.255.255.0
+set address "DMZ" "WEB1" 10.10.1.10 255.255.255.255
+set address "DMZ" "WEB2" 10.10.1.11 255.255.255.255
+set address "DB" "DB1" 10.20.1.5 255.255.255.255
+set group address "DMZ" "WEB-GRP"
+set group address "DMZ" "WEB-GRP" add "WEB1"
+set group address "DMZ" "WEB-GRP" add "WEB2"
+set service "TCP8443" protocol tcp src-port 0-65535 dst-port 8443-8443
+set service "TCP3306" protocol tcp src-port 0-65535 dst-port 3306-3306
+set group service "WEB-SVC"
+set group service "WEB-SVC" add "HTTPS"
+set group service "WEB-SVC" add "TCP8443"
+set policy id 10 from "Trust" to "DMZ"  "OFFICE" "WEB-NET" "WEB-SVC" permit log
+set policy id 10
+set service "HTTP"
+exit
+set policy id 11 from "Trust" to "DMZ"  "TEAM1" "WEB-GRP" "HTTPS" permit
+set policy id 12 from "Trust" to "DMZ"  "Any" "WEB-NET" "SSH" deny
+set policy id 13 from "Trust" to "DMZ"  "TEAM1" "WEB1" "SSH" permit
+set policy id 14 from "DMZ" to "DB"  "WEB1" "DB1" "TCP3306" permit
+set policy id 15 from "DMZ" to "DB"  "WEB-NET" "DB1" "TCP3306" permit
+set policy id 16 from "Trust" to "Untrust"  "OFFICE" "Any" "ANY" permit
+set policy id 16 disable
+set policy id 17 name "office-http" from "Trust" to "DMZ"  "OFFICE" "WEB-NET" "HTTP" permit

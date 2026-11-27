@@ -1,0 +1,43 @@
+set security address-book global address WEB-NET 10.10.1.0/24
+set security address-book global address WEB-SRV 10.10.1.10/32
+set security address-book global address DB-SRV 10.20.1.5/32
+set security address-book global address OFFICE 192.168.0.0/16
+set security address-book global address TEAM range-address 192.168.10.1 to 192.168.10.50
+set security address-book global address-set WEB-SET address WEB-SRV
+set applications application tcp-8443 protocol tcp
+set applications application tcp-8443 destination-port 8443
+set applications application-set WEB-APPS application junos-https
+set applications application-set WEB-APPS application tcp-8443
+set security policies from-zone trust to-zone dmz policy office-web match source-address OFFICE
+set security policies from-zone trust to-zone dmz policy office-web match destination-address WEB-NET
+set security policies from-zone trust to-zone dmz policy office-web match application WEB-APPS
+set security policies from-zone trust to-zone dmz policy office-web then permit
+set security policies from-zone trust to-zone dmz policy team-web match source-address TEAM
+set security policies from-zone trust to-zone dmz policy team-web match destination-address WEB-SET
+set security policies from-zone trust to-zone dmz policy team-web match application junos-https
+set security policies from-zone trust to-zone dmz policy team-web then permit
+set security policies from-zone trust to-zone dmz policy deny-ssh match source-address any
+set security policies from-zone trust to-zone dmz policy deny-ssh match destination-address WEB-NET
+set security policies from-zone trust to-zone dmz policy deny-ssh match application junos-ssh
+set security policies from-zone trust to-zone dmz policy deny-ssh then deny
+set security policies from-zone trust to-zone dmz policy team-ssh match source-address TEAM
+set security policies from-zone trust to-zone dmz policy team-ssh match destination-address WEB-SRV
+set security policies from-zone trust to-zone dmz policy team-ssh match application junos-ssh
+set security policies from-zone trust to-zone dmz policy team-ssh then permit
+set security policies from-zone dmz to-zone db policy web-db match source-address WEB-SRV
+set security policies from-zone dmz to-zone db policy web-db match destination-address DB-SRV
+set security policies from-zone dmz to-zone db policy web-db match application junos-ms-sql
+set security policies from-zone dmz to-zone db policy web-db then permit
+set security policies from-zone dmz to-zone db policy web-net-db match source-address WEB-NET
+set security policies from-zone dmz to-zone db policy web-net-db match destination-address DB-SRV
+set security policies from-zone dmz to-zone db policy web-net-db match application junos-ms-sql
+set security policies from-zone dmz to-zone db policy web-net-db then permit
+set security policies from-zone trust to-zone untrust policy old match source-address OFFICE
+set security policies from-zone trust to-zone untrust policy old match destination-address any
+set security policies from-zone trust to-zone untrust policy old match application any
+set security policies from-zone trust to-zone untrust policy old then permit
+deactivate security policies from-zone trust to-zone untrust policy old
+set security policies global policy global-deny match source-address any
+set security policies global policy global-deny match destination-address any
+set security policies global policy global-deny match application any
+set security policies global policy global-deny then deny

@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# 실제 장비 설정·export 는 절대 커밋하지 않는다 (samples/ 의 가상 데이터만 허용)
+private/
+real/
+*.conf
+!samples/*.conf
+*.cfg
+*_결과.xlsx
+*_정리리포트.xlsx
+*_정리본.xlsx
+*_정리명령어.txt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+~$*
+.vscode/
+.idea/

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>방화벽 정책 정리</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3Zm0 2.2 6 2.2V11c0 4-2.6 7.8-6 8.9-3.4-1.1-6-4.9-6-8.9V6.4l6-2.2Z"/><path fill="currentColor" d="M8 11h8v2H8z"/></svg>
+    <span>방화벽 정책 정리</span>
+  </div>
+  <span class="ver" id="ver"></span>
+</header>
+
+<main>
+  <!-- 1. 입력 -->
+  <section class="card" id="input-card">
+    <h2>1. 정책 파일 불러오기</h2>
+    <div class="input-grid">
+      <label class="drop" id="drop">
+        <input type="file" id="file" hidden>
+        <div class="drop-inner">
+          <strong id="file-name">파일을 끌어다 놓거나 클릭해서 선택</strong>
+          <span class="muted">설정 파일(.xml .conf .txt .set) 또는 정책 export(.xlsx .csv)</span>
+        </div>
+      </label>
+      <div class="opts">
+        <label class="field">
+          <span>벤더 / 형식</span>
+          <select id="vendor"></select>
+        </label>
+        <p class="muted small" id="vendor-hint"></p>
+        <fieldset>
+          <legend>정리 대상에 포함</legend>
+          <label class="chk"><input type="checkbox" id="opt-disabled" checked> 비활성 정책</label>
+          <label class="chk"><input type="checkbox" id="opt-unused"> Hit 0 정책 (export 에 Hit count 가 있을 때)</label>
+          <label class="chk"><input type="checkbox" id="opt-down" checked> 하위 정책에 포함되는 정책</label>
+          <label class="chk"><input type="checkbox" id="opt-merge" checked> 통합 후보 표시</label>
+        </fieldset>
+        <fieldset>
+          <legend>엑셀/CSV 해석</legend>
+          <label class="chk"><input type="checkbox" id="opt-nameip" checked> 객체 이름 속 IP 사용 (예: 10.1.1.5_WEB)</label>
+          <label class="chk"><input type="checkbox" id="opt-zero24" checked> 마스크 없는 x.x.x.0 은 /24 대역으로</label>
+        </fieldset>
+        <button class="primary" id="run" disabled>분석</button>
+      </div>
+    </div>
+
+    <details id="mapping-box" hidden>
+      <summary>열 매핑 확인 / 수정 <span class="muted small" id="mapping-sheet"></span></summary>
+      <p class="muted small">자동으로 인식한 열입니다. 다르면 고친 뒤 다시 분석하세요. 출발지·목적지는 필수입니다.</p>
+      <div class="mapping" id="mapping"></div>
+      <div class="sample-wrap"><table class="sample" id="sample"></table></div>
+    </details>
+    <div class="error" id="error" hidden></div>
+  </section>
+
+  <!-- 2. 결과 -->
+  <section id="result" hidden>
+    <div class="card">
+      <div class="result-head">
+        <div>
+          <h2>2. 분석 결과</h2>
+          <p class="muted small" id="result-meta"></p>
+        </div>
+        <div class="downloads">
+          <a class="btn" id="dl-report">엑셀 리포트</a>
+          <a class="btn" id="dl-cleaned" hidden>정리된 정책 파일</a>
+          <a class="btn" id="dl-commands">정리 명령어</a>
+        </div>
+      </div>
+      <div class="stats" id="stats"></div>
+      <div class="hotspots" id="hotspots" hidden></div>
+      <div class="notice" id="unverified" hidden></div>
+      <ul class="warnings" id="warnings" hidden></ul>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <div class="chips" id="chips"></div>
+        <div class="filters">
+          <select id="scope-filter"><option value="">전체 정책 그룹</option></select>
+          <input type="search" id="search" placeholder="ID, 이름, 주소, 서비스 검색">
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="rules" id="rules">
+          <thead><tr>
+            <th>상태</th><th>그룹</th><th class="num">순서</th><th>정책</th><th>동작</th>
+            <th>출발지</th><th>목적지</th><th>서비스</th><th class="num">Hit</th><th>판정</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="pager" id="pager"></div>
+    </div>
+  </section>
+</main>
+
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="drawer-head">
+    <h3 id="d-title"></h3>
+    <button class="icon" id="d-close" aria-label="닫기">×</button>
+  </div>
+  <div class="drawer-body" id="d-body"></div>
+</aside>
+<div class="scrim" id="scrim" hidden></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

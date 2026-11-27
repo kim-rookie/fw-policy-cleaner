@@ -1,0 +1,6 @@
+﻿No.,Name,Source,Destination,VPN,Services & Applications,Action,Track,Install On,Time,Comments,Hits
+1,Stealth,Any,10.0.0.1,Any,Any,Drop,Log,Policy Targets,Any,,120
+2,Web,Any,10.10.1.0/24,Any,http;https,Accept,Log,Policy Targets,Any,,5000
+3,Web-single,Any,10.10.1.10,Any,https,Accept,None,Policy Targets,Any,,0
+4,Mgmt,192.168.10.0/24,10.10.1.0/24,Any,ssh,Accept,Log,Policy Targets,Any,,33
+5,Cleanup,Any,Any,Any,Any,Drop,Log,Policy Targets,Any,,9000

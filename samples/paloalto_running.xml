@@ -1,0 +1,72 @@
+<?xml version="1.0"?>
+<config version="10.2.0">
+  <devices><entry name="localhost.localdomain"><vsys><entry name="vsys1">
+    <address>
+      <entry name="WEB-SRV"><ip-netmask>10.10.1.10/32</ip-netmask></entry>
+      <entry name="WEB-SRV2"><ip-netmask>10.10.1.11</ip-netmask></entry>
+      <entry name="WEB-NET"><ip-netmask>10.10.1.0/24</ip-netmask></entry>
+      <entry name="DB-SRV"><ip-netmask>10.20.1.5/32</ip-netmask></entry>
+      <entry name="OFFICE"><ip-netmask>192.168.0.0/16</ip-netmask></entry>
+      <entry name="OFFICE-TEAM1"><ip-range>192.168.10.1-192.168.10.50</ip-range></entry>
+      <entry name="BAD-HOST"><ip-netmask>192.168.66.6/32</ip-netmask></entry>
+      <entry name="UPDATE"><fqdn>update.example.com</fqdn></entry>
+    </address>
+    <address-group>
+      <entry name="WEB-GRP"><static><member>WEB-SRV</member><member>WEB-SRV2</member></static></entry>
+    </address-group>
+    <service>
+      <entry name="tcp-8443"><protocol><tcp><port>8443</port></tcp></protocol></entry>
+      <entry name="tcp-db"><protocol><tcp><port>1521,3306</port></tcp></protocol></entry>
+      <entry name="tcp-mysql"><protocol><tcp><port>3306</port></tcp></protocol></entry>
+    </service>
+    <service-group>
+      <entry name="WEB-PORTS"><members><member>service-https</member><member>tcp-8443</member></members></entry>
+    </service-group>
+    <rulebase><security><rules>
+      <entry name="block-bad-host"><from><member>trust</member></from><to><member>untrust</member></to>
+        <source><member>BAD-HOST</member></source><destination><member>any</member></destination>
+        <source-user><member>any</member></source-user><application><member>any</member></application>
+        <service><member>any</member></service><action>deny</action></entry>
+      <entry name="office-to-web"><from><member>trust</member></from><to><member>dmz</member></to>
+        <source><member>OFFICE</member></source><destination><member>WEB-NET</member></destination>
+        <source-user><member>any</member></source-user><application><member>any</member></application>
+        <service><member>WEB-PORTS</member></service><action>allow</action></entry>
+      <entry name="team1-to-web"><from><member>trust</member></from><to><member>dmz</member></to>
+        <source><member>OFFICE-TEAM1</member></source><destination><member>WEB-GRP</member></destination>
+        <source-user><member>any</member></source-user><application><member>any</member></application>
+        <service><member>service-https</member></service><action>allow</action></entry>
+      <entry name="office-to-web-copy"><from><member>trust</member></from><to><member>dmz</member></to>
+        <source><member>OFFICE</member></source><destination><member>WEB-NET</member></destination>
+        <source-user><member>any</member></source-user><application><member>any</member></application>
+        <service><member>WEB-PORTS</member></service><action>allow</action></entry>
+      <entry name="bad-host-web-allow"><from><member>trust</member></from><to><member>untrust</member></to>
+        <source><member>BAD-HOST</member></source><destination><member>any</member></destination>
+        <source-user><member>any</member></source-user><application><member>web-browsing</member></application>
+        <service><member>application-default</member></service><action>allow</action></entry>
+      <entry name="web-to-db-mysql"><from><member>dmz</member></from><to><member>db</member></to>
+        <source><member>WEB-SRV</member></source><destination><member>DB-SRV</member></destination>
+        <source-user><member>any</member></source-user><application><member>any</member></application>
+        <service><member>tcp-mysql</member></service><action>allow</action></entry>
+      <entry name="web-to-db"><from><member>dmz</member></from><to><member>db</member></to>
+        <source><member>WEB-NET</member></source><destination><member>DB-SRV</member></destination>
+        <source-user><member>any</member></source-user><application><member>any</member></application>
+        <service><member>tcp-db</member></service><action>allow</action></entry>
+      <entry name="web2-to-db"><from><member>dmz</member></from><to><member>db</member></to>
+        <source><member>WEB-SRV2</member></source><destination><member>DB-SRV</member></destination>
+        <source-user><member>any</member></source-user><application><member>any</member></application>
+        <service><member>tcp-db</member></service><action>allow</action></entry>
+      <entry name="old-temp-rule"><from><member>trust</member></from><to><member>dmz</member></to>
+        <source><member>10.99.0.0/16</member></source><destination><member>WEB-SRV</member></destination>
+        <source-user><member>any</member></source-user><application><member>any</member></application>
+        <service><member>any</member></service><action>allow</action><disabled>yes</disabled></entry>
+      <entry name="update-out"><from><member>dmz</member></from><to><member>untrust</member></to>
+        <source><member>WEB-NET</member></source><destination><member>UPDATE</member></destination>
+        <source-user><member>any</member></source-user><application><member>any</member></application>
+        <service><member>service-https</member></service><action>allow</action></entry>
+      <entry name="trust-out-any"><from><member>trust</member></from><to><member>untrust</member></to>
+        <source><member>OFFICE</member></source><destination><member>any</member></destination>
+        <source-user><member>any</member></source-user><application><member>any</member></application>
+        <service><member>any</member></service><action>allow</action></entry>
+    </rules></security></rulebase>
+  </entry></vsys></entry></devices>
+</config>

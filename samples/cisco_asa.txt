@@ -1,0 +1,44 @@
+: Saved
+ASA Version 9.16(4)
+hostname ASA-EDGE
+name 10.10.1.10 WEB1
+object network WEB-NET
+ subnet 10.10.1.0 255.255.255.0
+object network DB-SRV
+ host 10.20.1.5
+object network OFFICE
+ subnet 192.168.0.0 255.255.0.0
+object network TEAM
+ range 192.168.10.1 192.168.10.50
+object-group network WEB-SERVERS
+ network-object host 10.10.1.10
+ network-object host 10.10.1.11
+object-group service WEB-PORTS tcp
+ port-object eq www
+ port-object eq https
+object-group service DB-SVC
+ service-object tcp destination eq 3306
+ service-object tcp destination eq 1521
+access-list OUTSIDE_IN remark ---- web ----
+access-list OUTSIDE_IN extended permit tcp any object WEB-NET object-group WEB-PORTS
+access-list OUTSIDE_IN extended permit tcp any object-group WEB-SERVERS eq https
+access-list OUTSIDE_IN extended deny tcp any object WEB-NET eq ssh
+access-list OUTSIDE_IN extended permit tcp object TEAM host WEB1 eq ssh
+access-list OUTSIDE_IN extended permit tcp any object WEB-NET eq www log
+access-list OUTSIDE_IN extended permit ip any any inactive
+access-list INSIDE_IN extended permit object-group DB-SVC object WEB-NET object DB-SRV
+access-list INSIDE_IN extended permit tcp host 10.10.1.10 object DB-SRV eq 3306
+access-list INSIDE_IN extended permit tcp object OFFICE any eq https
+access-list INSIDE_IN extended permit tcp object OFFICE any eq www
+access-list INSIDE_IN extended permit ip object OFFICE any
+access-group OUTSIDE_IN in interface outside
+access-group INSIDE_IN in interface inside
+access-list OUTSIDE_IN; 6 elements; name hash: 0x1
+access-list OUTSIDE_IN line 1 remark ---- web ----
+access-list OUTSIDE_IN line 2 extended permit tcp any object WEB-NET object-group WEB-PORTS (hitcnt=0) 0x1a
+  access-list OUTSIDE_IN line 2 extended permit tcp any 10.10.1.0 255.255.255.0 eq www (hitcnt=1520) 0x2b
+  access-list OUTSIDE_IN line 2 extended permit tcp any 10.10.1.0 255.255.255.0 eq https (hitcnt=330) 0x3c
+access-list OUTSIDE_IN line 3 extended permit tcp any object-group WEB-SERVERS eq https (hitcnt=0) 0x4d
+access-list OUTSIDE_IN line 4 extended deny tcp any object WEB-NET eq ssh (hitcnt=17) 0x5e
+access-list OUTSIDE_IN line 5 extended permit tcp object TEAM host 10.10.1.10 eq ssh (hitcnt=0) 0x6f
+access-list OUTSIDE_IN line 6 extended permit tcp any object WEB-NET eq www log (hitcnt=0) 0x7a
