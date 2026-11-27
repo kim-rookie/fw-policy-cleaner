@@ -401,6 +401,9 @@ if (STATIC && Array.isArray(window.FWCLEAN_SAMPLES)) {
     window.FWCLEAN_SAMPLES.map(([file, label]) => `<option value="${esc(file)}">${esc(label)}</option>`).join("");
   pick.addEventListener("change", async () => {
     if (!pick.value) return;
+    state.file = null;                       // 불러오는 동안 이전 파일로 분석되지 않게
+    $("#file-name").textContent = pick.value + " 불러오는 중…";
+    updateRunButton();
     const r = await fetch("samples/" + encodeURIComponent(pick.value));
     const blob = await r.blob();
     $("#vendor").value = "auto";
