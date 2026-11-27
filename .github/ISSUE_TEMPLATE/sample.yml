@@ -1,0 +1,57 @@
+name: 장비 export 샘플 공유
+description: 아직 검증되지 않은 장비(SECUI, AXGATE, TrusGuard, WINS, Check Point 등)의 export 형식을 알려주세요.
+title: "[샘플] "
+labels: ["sample", "vendor-support"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## ⚠️ 올리기 전에 반드시 읽어주세요
+        이 저장소는 **공개**되어 있어 누구나 볼 수 있고, 올린 내용은 삭제해도 복사본이 남을 수 있습니다.
+        **실제 설정 파일을 그대로 올리지 마세요.** 방화벽 설정에는 회사 네트워크 구조가 담겨 있습니다.
+
+        - IP 주소·대역 → `10.x.x.x`, `192.0.2.x` 같은 가상 값으로
+        - 객체·정책·호스트 이름, 도메인 → `OBJ-1`, `WEB-SRV` 같은 일반 이름으로
+        - 설명/비고, 사용자 이름, 회사명 → 삭제
+
+        파서에 필요한 것은 **열 이름, 값의 표기 형식, 행 구성**뿐이라 정책 몇 줄만 있어도 충분합니다.
+  - type: checkboxes
+    id: anonymized
+    attributes:
+      label: 익명화 확인
+      options:
+        - label: 실제 IP·대역, 객체/정책/호스트 이름, 회사명, 사람 이름을 모두 가상 값으로 바꾸거나 지웠습니다.
+          required: true
+        - label: 소속 회사(또는 고객사)의 정보 공유 규정에 어긋나지 않습니다.
+          required: true
+  - type: input
+    id: vendor
+    attributes:
+      label: 장비 / 버전
+      placeholder: "예: SECUI MF2 v5.x, AXGATE 6.x"
+    validations:
+      required: true
+  - type: input
+    id: how
+    attributes:
+      label: export 방법
+      placeholder: "예: 관리 화면 > 정책 > 엑셀 내보내기"
+  - type: textarea
+    id: header
+    attributes:
+      label: 열 이름 (헤더 행)
+      description: export 파일의 첫 줄(열 이름)을 그대로 적어주세요. 열 이름은 민감 정보가 아닙니다.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: rows
+    attributes:
+      label: 익명화한 정책 예시 (3~10줄)
+      description: 여러 값이 한 칸에 들어가는 경우, 한 정책이 여러 행에 걸치는 경우가 있으면 꼭 포함해 주세요.
+      render: text
+  - type: textarea
+    id: result
+    attributes:
+      label: 이 도구에서의 결과
+      description: 열이 잘못 인식되거나 판정이 이상한 부분이 있었다면 알려주세요.
